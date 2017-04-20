@@ -2,6 +2,11 @@ import random
 
 
 class Card:
+
+    suits = ['Hearts', 'Diamonds', 'Spades', 'Clubs']
+
+    values = ['Ace', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Jack', 'Queen', 'King']
+
     def __init__(self, suit, value):
         self.suit = (suit.lower()).capitalize()
         self.value = (value.lower()).capitalize()
@@ -14,12 +19,6 @@ class Card:
 
     def __str__(self):
         return '{} of {}'.format(self.value, self.suit)
-
-    def suits(self):
-        return ['Hearts', 'Diamonds', 'Spades', 'Clubs']
-
-    def values(self):
-        return ['Ace', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Jack', 'Queen', 'King']
 
     def __eq__(self, other):
         return (self.suit, self.value) == (other.suit, other.value)
@@ -68,101 +67,93 @@ class Deck:
 class Hand:
     def __init__(self):
         self.cards_in_hand = []
-        self.soft = 0
-        self.hard = 0
-        self.stand = False
-
 
     def add_card(self, card):
         self.cards_in_hand.append(card)
-        self.sum_hand()
-
-    # def remove_card(self, card):
-    #     self.cards_in_hand.remove(card)
 
     def __repr__(self):
         return "{}".format(self.cards_in_hand)
 
-
     def __str__(self):
         return "{}".format(self.cards_in_hand)
 
+    def show_dealer_hand(self):
+        return "{}".format(self.cards_in_hand[1:])
 
-    def sum_hand(self):
+    def score_hand(self):
+        aces = 0
+        score = 0
         for card in self.cards_in_hand:
             if card.value in ['Jack', 'Queen', 'King']:
-                self.soft += 10
-                self.hard += 10
+                score += 10
             elif card.value == 'Ace':
-                self.soft += 11
-                self.hard += 1
+                score += 11
+                aces +=1
             else:
-                self.soft += int(card.value)
-                self.hard += int(card.value)
+                score += int(card.value)
+        while score > 21 and aces > 0:
+            score -= 10
+            aces -= 1
+        return score
 
-    def is_loss(self):
-        if self.soft > 21:
-            if self.hard > 21:
-                return True
-        else:
-            return False
+    def bust(self):
+        return self.score_hand() > 21
 
+class Player:
+    def __init__(self, hand):
+        self.hand = hand
 
+class Dealer(Player):
+    def hit(self):
+        return self.hand.score_hand() < 17
+
+class HumanPlayer(Player):
+    def hit(self):
+        choice = input("Would you like to hit or stand (h/s)? ")
+        if choice == "h":
+            return True
+        return False
 
 def main():
+
     d = Deck()
     d.shuffle()
-    dealer = Hand()
-    temp = []
-    dealer.add_card(d.deal())
-    dealer.add_card(d.deal())
-    temp.append(dealer.cards_in_hand[-1])
-    player1 = Hand()
-    player1.add_card(d.deal())
-    player1.add_card(d.deal())
-    print("Dealer has: {} ".format(temp))
-    print("You have: {} \n\n".format(player1))
+    dealer = Dealer(Hand())
+    player = HumanPlayer(Hand())
+    dealer.hand.add_card(d.deal())
+    dealer.hand.add_card(d.deal())
+    player.hand.add_card(d.deal())
+    player.hand.add_card(d.deal())
+    dealer_public = "\nDealer has: "
+    dealer_public += dealer.hand.show_dealer_hand()
+    print(dealer_public)
+    print("You have: {} \n\n".format(player.hand))
 
-    while True:
-        hit_or_stand = input("Would you like to hit or stand? (h/s) ")
-        if hit_or_stand == 'h':
-            player1.add_card(d.deal())
-            if player1.is_loss():
-                break
-            else:
-                print("Dealer has: {} ".format(temp))
-                print("You have: {} \n\n".format(player1))
-        else:
-            player1.stand = True
-            break
+    while not player.hand.bust() and player.hit():
+        player.hand.add_card(d.deal())
+        print("\nYou now have: {} \n\n".format(player.hand))
 
-    while not dealer.is_loss() and not dealer.stand:
-        dealer.add_card(d.deal())
-        if dealer.soft >= 17 or dealer.hard >= 17:
-            dealer.stand = True
+    if player.hand.bust():
+        print("You busted, you lose.\n")
+        return
 
-    print("Final--")
-    print("Dealer had: {} ".format(dealer))
-    print("You had: {} \n\n".format(player1))
-    if dealer.is_loss():
-        if player1.is_loss():
-            print("It was a tie or push.")
-        elif dealer.is_loss():
-            print("You won!")
-    elif player1.is_loss():
-        print("You lost.")
-    elif dealer.hard == 21 or dealer.soft == 21 and player1.hard == 21 or player1.soft == 21:
-        print("It was a tie or push.")
-    elif dealer.hard == 21 or dealer.soft == 21:
-        print("You lost.")
-    elif player1.hard == 21 or player1.soft == 21:
-        print("You won!")
-    elif player1.hard > dealer.hard and player1.hard > dealer.soft or player1.soft > dealer.hard and player1.soft > dealer.soft:
-        print("You won!")
-    elif dealer.hard > player1.hard and dealer.hard > player1.soft or dealer.soft > player1.hard and dealer.soft > player1.soft:
-        print("You lost.")
+    while dealer.hit() and not dealer.hand.bust():
+        dealer.hand.add_card(d.deal())
+
+    print("\nDealer now has {} \n".format(dealer.hand))
+    if dealer.hand.bust():
+        print("Dealer busted, you win.\n")
+        return
+
+    player_score = player.hand.score_hand()
+    dealer_score = dealer.hand.score_hand()
+
+    if player_score == dealer_score:
+        print("It was a push.\n")
+    elif player_score > dealer_score:
+        print("You win!\n")
     else:
-        print("It was a tie or push.")
+        print("You lose.\n")
 
 
 if __name__ == "__main__":
